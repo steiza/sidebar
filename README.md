@@ -4,7 +4,7 @@ Sidebar lets you have video meetings and secure file sharing in your browser, di
 
 ![screenshot showing video and file sharing](screenshot.png "screenshot of video and file sharing")
 
-There is a server that sends are receives a small amount of traffic to help clients find each other, but all video, audio, and data content is sent directly from peer to peer and is end-to-end encrypted with [DTLS](https://en.wikipedia.org/wiki/Datagram_Transport_Layer_Security).
+There is a server that sends and receives a small amount of traffic to help clients find each other, but all video, audio, and data content is sent directly from peer to peer and is end-to-end encrypted with [DTLS](https://en.wikipedia.org/wiki/Datagram_Transport_Layer_Security).
 
 ### Server details
 
