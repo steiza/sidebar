@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Video Conference</title>
+    <style>
+      body {
+        background-color: bisque;
+        color: #2f2f2f;
+      }
+      div.flex {
+        display: flex;
+        flex-wrap: wrap;
+      }
+      div.videoContainer {
+        position: relative;
+        height: min(33vw, 33vh);
+        width: min(44vw, 44vh);
+        background-color: #4f4f4f;
+        margin: 10px;
+      }
+      div.videoContainer:only-child {
+        height: min(72vw, 72vh);
+        width: min(96vw, 96vh);
+      }
+      div.videoContainer:first-child:nth-last-child(2), div.videoContainer:first-child:nth-last-child(2) ~ div.videoContainer {
+        height: max(min(33vw, 66vh), min(66vw, 33vh));
+        width: max(min(44vw, 88vh), min(88vw, 44vh));
+      }
+      video {
+        height: 100%;
+        width: 100%;
+      }
+      div.overlay {
+        position: absolute;
+        bottom: 20px;
+        left: 20px;
+        background-color: #2f2f2f;
+        color: #f2f2f2;
+        padding: 2px 5px;
+        border-radius: 3px;
+      }
+      div.overlayMuted {
+        position: absolute;
+        bottom: 20px;
+        right: 20px;
+        background-color: #2f2f2f;
+        color: #f2f2f2;
+        padding: 2px 5px;
+        border-radius: 3px;
+        visibility: hidden;
+      }
+      div#controls {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+      div.controlButton {
+        background-color: darkgreen;
+        color: bisque;
+        width: 100px;
+        height: 62px;
+        border-radius: 3px;
+        align-content: center;
+        font-size: 20px;
+        text-align: center;
+        cursor: pointer;
+      }
+      div.controlContainer {
+        position: relative;
+      }
+      div.controlSettings {
+        background-color: gray;
+        color: bisque;
+        width: 32px;
+        height: 62px;
+        border-radius: 3px;
+        align-content: center;
+        font-size: 20px;
+        text-align: center;
+        cursor: pointer;
+      }
+      div#videoSettingsOverlay {
+        position: absolute;
+        bottom: 62px;
+        left: 0px;
+        background-color: whitesmoke;
+        padding: 20px;
+        border: 2px solid #2f2f2f;
+        color: #2f2f2f;
+        white-space: nowrap;
+      }
+      div#audioSettingsOverlay {
+        position: absolute;
+        bottom: 62px;
+        left: 0px;
+        background-color: whitesmoke;
+        padding: 20px;
+        border: 2px solid #2f2f2f;
+        color: #2f2f2f;
+        white-space: nowrap;
+      }
+      div.fileSharingArea, div.downloadArea {
+        padding: 20px;
+      }
+      div.fileSharingContainer, div.downloadContainer {
+        background-color: whitesmoke;
+        padding: 20px;
+        margin: 20px;
+        border: 2px solid #2f2f2f;
+        color: #2f2f2f;
+        white-space: nowrap;
+      }
+      meter.download {
+        width: 100%;
+        height: 24px;
+      }
+    </style>
+    <script src='/socket.io/socket.io.js'></script>
+  </head>
+  <body>
+    <div id="videos" class="flex">
+      <div class="videoContainer">
+        <video id="localVideo" autoplay playsinline muted style="transform: scaleX(-1);"></video>
+        <div class="overlayMuted">muted</div>
+      </div>
+    </div>
+    <div id="controls">
+      <div class="controlButton" id="audioButton">Audio</div>
+      <div class="controlContainer">
+        <div class="controlSettings" id="audioSettings">^</div>
+        <div id="audioSettingsOverlay" style="visibility: hidden;">
+          <p>Audio Source:
+            <select id="audioSource"></select>
+          </p>
+          <p>Audio Level:
+            <meter id="audioLevel" min="0" max="1" value="0"></meter>
+          </p>
+        </div>
+      </div>
+      <div class="controlButton" id="videoButton" style="margin-left: 50px;">Video</div>
+      <div class="controlContainer">
+        <div class="controlSettings" id="videoSettings">^</div>
+        <div id="videoSettingsOverlay" style="visibility: hidden;">
+          <p>Video Source:
+            <select id="videoSource"></select>
+          </p>
+        </div>
+      </div>
+      <div class="controlButton" id="fileButton" style="background-color: darkred; margin-left: 50px;">File</div>
+    </div>
+    <div id="downloadArea">
+    </div>
+    <div id="fileSharingArea">
+    </div>
+    <script type="text/javascript">
+      const localVideo = document.querySelector('video#localVideo');
+      let localStream;
+      let analyser;
+      let dirHandle;
+
+      function sendToPeers(data, username='') {
+        Object.entries(usernameToPeerConnections).forEach(([remoteUsername, peerConnection]) => {
+          if (username.length == 0 || remoteUsername === username) {
+            if (peerConnection.dataChannel && peerConnection.dataChannel.readyState === 'open') {
+              peerConnection.dataChannel.send(JSON.stringify(data));
+            }
+          }
+        });
+      }
+
+      document.querySelector('div#videoButton').addEventListener('click', function() {
+        if(!localStream) {
+          return;
+        }
+        var videoAllOff = true;
+        localStream.getTracks().forEach(track => {
+          if (track.kind === 'video') {
+            if (track.enabled) {
+              videoAllOff = false;
+            }
+          }
+        });
+        localStream.getTracks().forEach(track => {
+          if (track.kind === 'video') {
+            track.enabled = videoAllOff;
+          }
+        });
+        if (videoAllOff) {
+          this.style.backgroundColor = 'darkgreen';
+        } else {
+          this.style.backgroundColor = 'darkred';
+        }
+      });
+
+      document.querySelector('div#videoSettings').addEventListener('click', function() {
+        const videoSettingsOverlay = document.querySelector("div#videoSettingsOverlay");
+        videoSettingsOverlay.style.visibility = (videoSettingsOverlay.style.visibility == 'hidden') ? 'visible' : 'hidden';
+      });
+
+      document.querySelector('div#audioButton').addEventListener('click', function() {
+        if(!localStream) {
+          return;
+        }
+        var audioAllOff = true;
+        localStream.getTracks().forEach(track => {
+          if (track.kind === 'audio') {
+            if (track.enabled) {
+              audioAllOff = false;
+            }
+          }
+        });
+        localStream.getTracks().forEach(track => {
+          if (track.kind === 'audio') {
+            track.enabled = audioAllOff;
+          }
+        });
+        const container = localVideo.parentElement;
+        let overlayMuted = container.querySelector('div.overlayMuted');
+
+        if (audioAllOff) {
+          this.style.backgroundColor = 'darkgreen';
+          overlayMuted.style.visibility = 'hidden';
+          sendToPeers({type: 'mute', state: 'unmuted'});
+        } else {
+          this.style.backgroundColor = 'darkred';
+          overlayMuted.style.visibility = 'visible';
+          sendToPeers({type: 'mute', state: 'muted'});
+        }
+      });
+
+      document.querySelector('div#audioSettings').addEventListener('click', function() {
+        const audioSettingsOverlay = document.querySelector("div#audioSettingsOverlay");
+        audioSettingsOverlay.style.visibility = (audioSettingsOverlay.style.visibility == 'hidden') ? 'visible' : 'hidden';
+      });
+
+      function hookUpMeter() {
+        if (localStream) {
+          const audioTracks = localStream.getAudioTracks();
+          if (audioTracks.length > 0) {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            analyser = audioContext.createAnalyser();
+            analyser.fftSize = 256;
+            const source = audioContext.createMediaStreamSource(localStream);
+            source.connect(analyser);
+          }
+        }
+      }
+
+      const audioLevelMeter = document.querySelector('meter#audioLevel');
+      setInterval(() => {
+        if (analyser) {
+          const dataArray = new Uint8Array(analyser.frequencyBinCount);
+          analyser.getByteTimeDomainData(dataArray);
+          const spread = Math.max(...dataArray) - Math.min(...dataArray);
+          const value = Math.min((spread / 8), 1);
+          audioLevelMeter.value = (audioLevelMeter.value*3 + value)/4;
+        }
+      }, 200);
+
+      document.querySelector('div#fileButton').addEventListener('click', async function() {
+        if (this.style.backgroundColor == 'darkred') {
+          try {
+            dirHandle = await window.showDirectoryPicker();
+            this.style.backgroundColor = 'darkgreen';
+            var contents = [];
+            for await (const entry of dirHandle.values()) {
+              if (entry.kind == 'directory') {
+                contents.push(entry.name + '/');
+              } else {
+                contents.push(entry.name);
+              }
+            }
+            addFileSharing(username, dirHandle.name + '/', contents, localFileSharingUpdate);
+            sendToPeers({type: 'share', state: 'start', directory: dirHandle.name + '/', contents: contents});
+          } catch (error) {
+            console.log('Error:', error);
+          }
+        } else {
+          this.style.backgroundColor = 'darkred';
+          dirHandle = null;
+          removeFileSharing(username);
+          sendToPeers({type: 'share', state: 'stop'});
+        }
+      });
+
+      function addFileSharing(username, path, contents, updateFunc, downloadFunc=null) {
+        const fileSharingArea = document.querySelector('div#fileSharingArea');
+        const container = document.createElement('div');
+        container.className = 'fileSharingContainer';
+        container.id = username;
+        const header = document.createElement('h3');
+        header.textContent = 'Files shared from ' + username + ': ' + path;
+        const fileList = document.createElement('ul');
+        fileList.className = 'fileList';
+        if (path.search('/') != -1 && path.search('/') < path.length-1) {
+          const listItem = document.createElement('li');
+          const link = document.createElement('a');
+          link.href = '#';
+          link.textContent = "..";
+          link.addEventListener('click', async function() {
+            const newPath = path.split('/').slice(0, -2).join('/') + '/';
+            updateFunc(username, newPath);
+          });
+          listItem.appendChild(link);
+          fileList.appendChild(listItem);
+        }
+        contents.forEach(item => {
+          const listItem = document.createElement('li');
+            if (item.endsWith('/')) {
+              const link = document.createElement('a');
+              link.href = '#';
+              link.textContent = item;
+              link.addEventListener('click', async function() {
+                updateFunc(username, path+item);
+              });
+              listItem.appendChild(link);
+            } else {
+              if (downloadFunc) {
+                const link = document.createElement('a');
+                link.href = '#';
+                link.textContent = item;
+                link.addEventListener('click', function() {
+                  downloadFunc(username, path+item);
+                });
+                listItem.appendChild(link);
+              } else {
+                listItem.textContent = item;
+              }
+            }
+          fileList.appendChild(listItem);
+        });
+        container.appendChild(header);
+        container.appendChild(fileList);
+        fileSharingArea.appendChild(container);
+      }
+
+      function remoteFileSharingUpdate(username, path) {
+        sendToPeers({type: 'share', state: 'request', directory: path}, username);
+      }
+
+      async function getPathContents(path) {
+        let currentHandle = dirHandle;
+        const pathParts = path.split('/').filter(part => part.length > 0).slice(1);
+
+        // Traverse the filesystem
+        for (const part of pathParts) {
+          try {
+            currentHandle = await currentHandle.getDirectoryHandle(part);
+          } catch (error) {
+            console.error('Error accessing subdirectory:', part, error);
+            return;
+          }
+        }
+
+        const contents = [];
+        for await (const entry of currentHandle.values()) {
+          if (entry.kind === 'directory') {
+            contents.push(entry.name + '/');
+          } else {
+            contents.push(entry.name);
+          }
+        }
+        return contents;
+      }
+
+      async function localFileSharingUpdate(username, path) {
+        const contents = await getPathContents(path);
+        removeFileSharing(username);
+        addFileSharing(username, path, contents, localFileSharingUpdate);
+      }
+
+      function removeFileSharing(username) {
+        const fileSharing = document.querySelector('div#' + username);
+        if (fileSharing) {
+          fileSharing.remove();
+        }
+      }
+
+      const servers = {
+        iceServers: [{urls: 'stun:stun.l.google.com:19302'}]
+      };
+
+      const password = "<%= password %>";
+      let username = "<%= username %>";
+      var usernameToPeerConnections = {};
+
+      function startLocalStream() {
+        navigator.mediaDevices.enumerateDevices()
+          .then(devices => {
+            const videoSelect = document.querySelector('select#videoSource');
+            const audioSelect = document.querySelector('select#audioSource');
+
+            devices.forEach(device => {
+              if (device.kind === 'videoinput') {
+                const option = document.createElement('option');
+                option.value = device.deviceId;
+                option.text = device.label || `Camera ${videoSelect.length + 1}`;
+                videoSelect.appendChild(option);
+              } else if (device.kind === 'audioinput') {
+                const option = document.createElement('option');
+                option.value = device.deviceId;
+                option.text = device.label || `Microphone ${videoSelect.length + 1}`;
+                audioSelect.appendChild(option);
+              }
+            });
+
+            videoSelect.addEventListener('change', updateStreams);
+            audioSelect.addEventListener('change', updateStreams);
+          })
+
+          return navigator.mediaDevices.getUserMedia({ video: true, audio: {noiseSuppression: true,
+            echoCancellation: true}})
+          .then(stream => {
+            localStream = stream;
+            hookUpMeter();
+            localVideo.srcObject = localStream;
+          })
+          .catch(error => {
+            alert('Please allow access to camera and microphone');
+            console.error('Error accessing media devices.', error);
+          });
+      }
+
+      function updateStreams() {
+        const videoSelect = document.querySelector('select#videoSource');
+        const audioSelect = document.querySelector('select#audioSource');
+
+        navigator.mediaDevices.getUserMedia({
+          video: {deviceId: {exact: videoSelect.value}},
+          audio: {deviceId: {exact: audioSelect.value}, noiseSuppression: true, echoCancellation: true}
+        })
+        .then(stream => {
+          // Replace old stream with new stream
+          Object.entries(usernameToPeerConnections).forEach(([remoteUsername, peerConnection]) => {
+            peerConnection.localStreamTracks.forEach(track => {
+              peerConnection.removeTrack(track);
+            });
+            peerConnection.localStreamTracks = [];
+
+            stream.getTracks().forEach(track => {
+              var newTrack = peerConnection.addTrack(track, stream);
+              peerConnection.localStreamTracks.push(newTrack);
+            });
+            peerConnection.createOffer()
+              .then((offer) => peerConnection.setLocalDescription(offer))
+              .then(() => {
+                socket.emit('local offer', password, remoteUsername, peerConnection.localDescription);
+              });
+          });
+
+          localStream = stream;
+          hookUpMeter();
+          localVideo.srcObject = localStream;
+        });
+      }
+
+      function downloadRemoteFile(remoteUsername, path) {
+        var parts = [];
+        var receivedSize = 0;
+        var initialMessage = true;
+        const downloadChannel = usernameToPeerConnections[remoteUsername].createDataChannel('downloadChannel');
+        const downloadId = 'id' + Math.random().toString(36).substring(2, 10);
+
+        downloadChannel.onopen = () => {
+          downloadChannel.send(JSON.stringify({'path': path}));
+          const downloadArea = document.querySelector('div#downloadArea');
+          const downloadContainer = document.createElement('div');
+          downloadContainer.className = 'downloadContainer';
+          downloadContainer.id = downloadId;
+          downloadContainer.textContent = 'Downloading from ' + remoteUsername + ': ' + path;
+          const p = document.createElement('p');
+          const meter = document.createElement('meter');
+          meter.className = 'download';
+          meter.id = downloadId;
+          meter.min = 0;
+          meter.max = 1;
+          meter.value = 0;
+          p.appendChild(meter);
+          downloadContainer.append(p);
+          downloadArea.appendChild(downloadContainer);
+          downloadContainer.scrollTo();
+        };
+
+        downloadChannel.onmessage = event => {
+          const meter = document.querySelector('meter#' + downloadId);
+          if (initialMessage) {
+            initialMessage = false;
+            meter.max = JSON.parse(event.data)['size'];
+          } else {
+            parts.push(event.data);
+            receivedSize += event.data.byteLength;
+            meter.value = receivedSize;
+          }
+        };
+
+        downloadChannel.onclose = () => {
+          const blob = new Blob(parts);
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = path.split('/').pop();
+          a.click();
+          URL.revokeObjectURL(url);
+          document.querySelector('div#' + downloadId).remove();
+        };
+      }
+
+      function createPeerConnection(remoteUsername, polite) {
+        usernameToPeerConnections[remoteUsername] = new RTCPeerConnection(servers);
+        usernameToPeerConnections[remoteUsername].polite = polite;
+
+        // Set up data channel handling
+        const dataChannel = usernameToPeerConnections[remoteUsername].createDataChannel('dataChannel', {negotiated: true, id: 0});
+        usernameToPeerConnections[remoteUsername].dataChannel = dataChannel;
+        dataChannel.onopen = dataChannelOnOpen;
+        dataChannel.onmessage = dataChannelOnMessage;
+
+        // Listen for file download requests
+        usernameToPeerConnections[remoteUsername].addEventListener('datachannel', function (event) {
+          if (event.channel) {
+            event.channel.onmessage = async messageEvent => {
+              const message = JSON.parse(messageEvent.data);
+
+              let currentHandle = dirHandle;
+              const pathParts = message['path'].split('/');
+
+              // Traverse the filesystem
+              for (const part of pathParts.slice(1, -1)) {
+                try {
+                  currentHandle = await currentHandle.getDirectoryHandle(part);
+                } catch (error) {
+                  console.error('Error accessing subdirectory:', part, error);
+                  return;
+                }
+              }
+
+              const fileHandle = await currentHandle.getFileHandle(pathParts[pathParts.length-1]);
+              const file = await fileHandle.getFile();
+              event.channel.send(JSON.stringify({'size': file.size}));
+              const chunkSize = 16 * 1024; // 16 KB
+              let offset = 0;
+
+              while (offset < file.size) {
+                const chunk = file.slice(offset, offset + chunkSize);
+                const arrayBuffer = await chunk.arrayBuffer();
+                event.channel.send(arrayBuffer);
+                offset += chunkSize;
+              }
+
+              event.channel.close();
+            };
+          }
+        });
+
+        function dataChannelOnMessage (event) {
+          const message = JSON.parse(event.data);
+          if (message.type === 'mute') {
+            const container = document.querySelector('video#' + remoteUsername).parentElement;
+            let overlayMuted = container.querySelector('div.overlayMuted');
+
+            if (message.state === 'muted') {
+              overlayMuted.style.visibility = "visible";
+            } else if (message.state === 'unmuted') {
+              overlayMuted.style.visibility = "hidden";
+            }
+          } else if (message.type == 'share') {
+            if (message.state == 'start') {
+              removeFileSharing(remoteUsername);
+              addFileSharing(remoteUsername, message.directory, message.contents, remoteFileSharingUpdate, downloadRemoteFile);
+            } else if (message.state == 'request') {
+              getPathContents(message.directory).then(contents => {
+                sendToPeers({type: 'share', state: 'start', directory: message.directory, contents: contents});
+              });
+            } else if (message.state == 'stop') {
+              removeFileSharing(remoteUsername);
+            }
+          }
+        }
+
+        function dataChannelOnOpen (event) {
+          // If we are muted, tell peer
+          var audioAllOff = true;
+          localStream.getTracks().forEach(track => {
+            if (track.kind === 'audio') {
+              if (track.enabled) {
+                audioAllOff = false;
+              }
+            }
+          });
+
+          if (audioAllOff) {
+            sendToPeers({type: 'mute', state: 'muted'}, remoteUsername);
+          }
+          if (dirHandle) {
+            var contents = [];
+            (async () => {
+              for await (const entry of dirHandle.values()) {
+                if (entry.kind == 'directory') {
+                  contents.push(entry.name + '/');
+                } else {
+                  contents.push(entry.name);
+                }
+              }
+            })().then( () => {
+              sendToPeers({type: 'share', state: 'start', directory: dirHandle.name + '/', contents: contents})
+            });
+          }
+        }
+
+        const container = document.createElement('div');
+        container.className = 'videoContainer';
+        const remoteVideo = document.createElement('video');
+        remoteVideo.id = remoteUsername;
+        remoteVideo.autoplay = true;
+        remoteVideo.playsInline = true;
+        const overlay = document.createElement('div');
+        overlay.className = 'overlay';
+        overlay.textContent = remoteUsername;
+        const overlayMuted = document.createElement('div');
+        overlayMuted.className = 'overlayMuted';
+        overlayMuted.textContent = 'muted';
+        container.appendChild(remoteVideo);
+        container.appendChild(overlay);
+        container.appendChild(overlayMuted);
+        document.querySelector('div#videos').appendChild(container);
+
+        usernameToPeerConnections[remoteUsername].onicecandidate = event => {
+          if (event.candidate) {
+            socket.emit('send ice candidate', password, remoteUsername, event.candidate);
+          }
+        }
+
+        usernameToPeerConnections[remoteUsername].onnegotiationneeded = event => {
+          usernameToPeerConnections[remoteUsername].makingOffer = true;
+          usernameToPeerConnections[remoteUsername].createOffer()
+            .then((offer) => usernameToPeerConnections[remoteUsername].setLocalDescription(offer))
+            .then(() => {
+              socket.emit('local offer', password, remoteUsername, usernameToPeerConnections[remoteUsername].localDescription);
+            })
+            .catch((err) => {
+              console.log(err);
+            });
+          usernameToPeerConnections[remoteUsername].makingOffer = false;
+        }
+
+        usernameToPeerConnections[remoteUsername].ontrack = event => {
+          remoteVideo.srcObject = event.streams[0];
+        };
+
+        usernameToPeerConnections[remoteUsername].localStreamTracks = [];
+        localStream.getTracks().forEach(track => {
+          const newTrack = usernameToPeerConnections[remoteUsername].addTrack(track, localStream);
+          usernameToPeerConnections[remoteUsername].localStreamTracks.push(newTrack);
+        });
+
+        return usernameToPeerConnections[remoteUsername];
+      }
+
+      const socket = io.connect();
+
+      console.log(username + ' create or join');
+      startLocalStream().then(() => {
+        socket.emit('create or join', password, username);
+      });
+
+      socket.on('assigned username', (assignedUsername) => {
+        username = assignedUsername;
+        var overlay = document.createElement('div');
+        overlay.className = 'overlay';
+        overlay.textContent = username;
+        document.querySelector('video#localVideo').insertAdjacentElement('afterend', overlay);
+      })
+
+      socket.on('empty', (remoteUsername) => {
+        console.log('No one else is here yet');
+      });
+
+      socket.on('join', (remoteUsername) => {
+        console.log(remoteUsername + ' joined call in progress');
+        if (!usernameToPeerConnections[remoteUsername]) {
+          createPeerConnection(remoteUsername, false);
+        }
+      });
+
+      socket.on('offer response', (forUsername, remoteUsername, offer) => {
+        if (forUsername == username) {
+          console.log('offer response ' + remoteUsername)
+          usernameToPeerConnections[remoteUsername].setRemoteDescription(offer);
+        }
+      });
+
+      socket.on('remote offer', (forUsername, remoteUsername, offer) => {
+        if (forUsername == username) {
+          console.log('remote offer ' + remoteUsername);
+          if (!usernameToPeerConnections[remoteUsername]) {
+            createPeerConnection(remoteUsername, true);
+          }
+          if (usernameToPeerConnections[remoteUsername].makingOffer && !usernameToPeerConnections[remoteUsername].polite) {
+            return;
+          }
+          usernameToPeerConnections[remoteUsername].setRemoteDescription(offer)
+              .then(() => usernameToPeerConnections[remoteUsername].createAnswer())
+              .then((answer) => usernameToPeerConnections[remoteUsername].setLocalDescription(answer))
+              .then(() => {
+                socket.emit('remote offer', password, remoteUsername, usernameToPeerConnections[remoteUsername].localDescription);
+              });
+        }
+      });
+
+      socket.on('recv ice candidate', (forUsername, remoteUsername, candidate) => {
+        if (forUsername == username) {
+          console.log('ice candidate from ' + remoteUsername);
+          usernameToPeerConnections[remoteUsername].addIceCandidate(candidate);
+        }
+      });
+
+      socket.on('leave', (username) => {
+        console.log(username + ' disconnected');
+        const remoteVideo = document.querySelector('video#' + username).parentElement;
+        removeFileSharing(username);
+        if (remoteVideo) {
+          remoteVideo.remove();
+        }
+        if (usernameToPeerConnections[username]) {
+          delete usernameToPeerConnections[username];
+        }
+      });
+    </script>
+  </body>
+</html>
