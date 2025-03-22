@@ -10,6 +10,7 @@
       div.flex {
         display: flex;
         flex-wrap: wrap;
+        justify-content: center;
       }
       div.videoContainer {
         position: relative;
@@ -19,12 +20,20 @@
         margin: 10px;
       }
       div.videoContainer:only-child {
-        height: min(72vw, 72vh);
-        width: min(96vw, 96vh);
+        height: calc(min(75vw, 100vh)*0.9);
+        width: calc(min(100vw, 133vh)*0.9);
       }
       div.videoContainer:first-child:nth-last-child(2), div.videoContainer:first-child:nth-last-child(2) ~ div.videoContainer {
-        height: max(min(33vw, 66vh), min(66vw, 33vh));
-        width: max(min(44vw, 88vh), min(88vw, 44vh));
+        height: calc(max(min(38vw, 100vh), min(75vw, 50vh))*0.9);
+        width: calc(max(min(50vw, 133vh), min(100vw, 66vh))*0.9);
+      }
+      div.videoContainer:first-child:nth-last-child(3), div.videoContainer:first-child:nth-last-child(3) ~ div.videoContainer {
+        height: calc(max(min(25vw, 100vh), min(75vw, 33vh), min(38vw, 50vh))*0.9);
+        width: calc(max(min(33vw, 133vh), min(100vw, 44vh), min(50vw, 66vh))*0.9);
+      }
+      div.videoContainer:first-child:nth-last-child(4), div.videoContainer:first-child:nth-last-child(4) ~ div.videoContainer {
+        height: calc(max(min(19vw, 100vh), min(75vw, 25vh), min(38vw, 50vh))*0.9);
+        width: calc(max(min(25vw, 133vh), min(100vw, 33vh), min(50vw, 66vh))*0.9);
       }
       video {
         height: 100%;
