@@ -127,8 +127,6 @@
         visibility: hidden;
         background-color: darkred;
         color: whitesmoke;
-        padding: 10px;
-        margin: 10px;
       }
     </style>
     <script src='/socket.io/socket.io.js'></script>
@@ -184,6 +182,22 @@
           }
         });
       }
+
+      document.body.addEventListener('click', function(event) {
+        const videoSettingsOverlay = document.querySelector('div#videoSettingsOverlay');
+        const audioSettingsOverlay = document.querySelector('div#audioSettingsOverlay');
+
+        if (event.target != document.querySelector('div#videoSettings') && !videoSettingsOverlay.contains(event.target)) {
+          if (videoSettingsOverlay.style.visibility === 'visible') {
+            videoSettingsOverlay.style.visibility = 'hidden';
+          }
+        }
+        if (event.target != document.querySelector('div#audioSettings') && !audioSettingsOverlay.contains(event.target)) {
+          if (audioSettingsOverlay.style.visibility === 'visible') {
+            audioSettingsOverlay.style.visibility = 'hidden';
+          }
+        }
+      });
 
       document.querySelector('div#videoButton').addEventListener('click', function() {
         if(!localStream) {
@@ -435,6 +449,8 @@
           .catch(error => {
             const alert = document.querySelector('div.alert');
             alert.innerHTML = 'Unable to access camera: ' + error;
+            alert.style.margin = '10px';
+            alert.style.padding = '10px';
             alert.style.visibility = 'visible';
           });
       }
