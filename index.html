@@ -123,10 +123,18 @@
         width: 100%;
         height: 24px;
       }
+      div.alert {
+        visibility: hidden;
+        background-color: darkred;
+        color: whitesmoke;
+        padding: 10px;
+        margin: 10px;
+      }
     </style>
     <script src='/socket.io/socket.io.js'></script>
   </head>
   <body>
+    <div class="alert"></div>
     <div id="videos" class="flex">
       <div class="videoContainer">
         <video id="localVideo" autoplay playsinline muted style="transform: scaleX(-1);"></video>
@@ -425,8 +433,9 @@
             localVideo.srcObject = localStream;
           })
           .catch(error => {
-            alert('Please allow access to camera and microphone');
-            console.error('Error accessing media devices.', error);
+            const alert = document.querySelector('div.alert');
+            alert.innerHTML = 'Unable to access camera: ' + error;
+            alert.style.visibility = 'visible';
           });
       }
 
@@ -589,13 +598,15 @@
         function dataChannelOnOpen (event) {
           // If we are muted, tell peer
           var audioAllOff = true;
-          localStream.getTracks().forEach(track => {
-            if (track.kind === 'audio') {
-              if (track.enabled) {
-                audioAllOff = false;
+          if (localStream) {
+            localStream.getTracks().forEach(track => {
+              if (track.kind === 'audio') {
+                if (track.enabled) {
+                  audioAllOff = false;
+                }
               }
-            }
-          });
+            });
+          }
 
           if (audioAllOff) {
             sendToPeers({type: 'mute', state: 'muted'}, remoteUsername);
@@ -657,10 +668,12 @@
         };
 
         usernameToPeerConnections[remoteUsername].localStreamTracks = [];
-        localStream.getTracks().forEach(track => {
-          const newTrack = usernameToPeerConnections[remoteUsername].addTrack(track, localStream);
-          usernameToPeerConnections[remoteUsername].localStreamTracks.push(newTrack);
-        });
+        if(localStream) {
+          localStream.getTracks().forEach(track => {
+            const newTrack = usernameToPeerConnections[remoteUsername].addTrack(track, localStream);
+            usernameToPeerConnections[remoteUsername].localStreamTracks.push(newTrack);
+          });
+        }
 
         return usernameToPeerConnections[remoteUsername];
       }
