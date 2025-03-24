@@ -416,6 +416,11 @@
       var usernameToPeerConnections = {};
 
       function startLocalStream() {
+        const savedVideoSource = localStorage.getItem('videoSource');
+        const savedAudioSource = localStorage.getItem('audioSource');
+        var videoConstraint = true;
+        var audioConstraint = {noiseSuppression: true, echoCancellation: true}
+
         navigator.mediaDevices.enumerateDevices()
           .then(devices => {
             const videoSelect = document.querySelector('select#videoSource');
@@ -426,38 +431,51 @@
                 const option = document.createElement('option');
                 option.value = device.deviceId;
                 option.text = device.label || `Camera ${videoSelect.length + 1}`;
+                if (device.deviceId == savedVideoSource) {
+                  videoConstraint = {deviceId: {exact: device.deviceId}};
+                  option.selected = true;
+                }
                 videoSelect.appendChild(option);
               } else if (device.kind === 'audioinput') {
                 const option = document.createElement('option');
                 option.value = device.deviceId;
                 option.text = device.label || `Microphone ${videoSelect.length + 1}`;
+                if (device.deviceId == savedAudioSource) {
+                  audioConstraint['deviceId'] = {exact: device.deviceId};
+                  option.selected = true;
+                }
                 audioSelect.appendChild(option);
               }
             });
 
             videoSelect.addEventListener('change', updateStreams);
             audioSelect.addEventListener('change', updateStreams);
-          })
 
-          return navigator.mediaDevices.getUserMedia({ video: true, audio: {noiseSuppression: true,
-            echoCancellation: true}})
-          .then(stream => {
-            localStream = stream;
-            hookUpMeter();
-            localVideo.srcObject = localStream;
-          })
-          .catch(error => {
-            const alert = document.querySelector('div.alert');
-            alert.innerHTML = 'Unable to access camera: ' + error;
-            alert.style.margin = '10px';
-            alert.style.padding = '10px';
-            alert.style.visibility = 'visible';
+            navigator.mediaDevices.getUserMedia({ video: videoConstraint, audio: audioConstraint })
+              .then(stream => {
+                localStream = stream;
+                hookUpMeter();
+                localVideo.srcObject = localStream;
+              })
+              .catch(error => {
+                const alert = document.querySelector('div.alert');
+                alert.innerHTML = 'Unable to access camera: ' + error;
+                alert.style.margin = '10px';
+                alert.style.padding = '10px';
+                alert.style.visibility = 'visible';
+              })
+              .finally(() => {
+                socket.emit('create or join', password, username);
+              })
           });
       }
 
       function updateStreams() {
         const videoSelect = document.querySelector('select#videoSource');
         const audioSelect = document.querySelector('select#audioSource');
+
+        localStorage.setItem('videoSource', videoSelect.value);
+        localStorage.setItem('audioSource', audioSelect.value);
 
         navigator.mediaDevices.getUserMedia({
           video: {deviceId: {exact: videoSelect.value}},
@@ -697,9 +715,7 @@
       const socket = io.connect();
 
       console.log(username + ' create or join');
-      startLocalStream().then(() => {
-        socket.emit('create or join', password, username);
-      });
+      startLocalStream();
 
       socket.on('assigned username', (assignedUsername) => {
         username = assignedUsername;
