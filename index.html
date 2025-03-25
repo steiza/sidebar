@@ -531,6 +531,14 @@
           downloadContainer.append(p);
           downloadArea.appendChild(downloadContainer);
           downloadContainer.scrollTo();
+
+          const cancelButton = document.createElement('button');
+          cancelButton.textContent = 'Cancel';
+          cancelButton.addEventListener('click', () => {
+            parts = [];
+            downloadChannel.close();
+          });
+          downloadContainer.appendChild(cancelButton);
         };
 
         downloadChannel.onmessage = event => {
@@ -546,13 +554,15 @@
         };
 
         downloadChannel.onclose = () => {
-          const blob = new Blob(parts);
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = path.split('/').pop();
-          a.click();
-          URL.revokeObjectURL(url);
+          if (parts.length > 0) {
+            const blob = new Blob(parts);
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = path.split('/').pop();
+            a.click();
+            URL.revokeObjectURL(url);
+          }
           document.querySelector('div#' + downloadId).remove();
         };
       }
