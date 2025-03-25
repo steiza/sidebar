@@ -621,7 +621,7 @@
               addFileSharing(remoteUsername, message.directory, message.contents, remoteFileSharingUpdate, downloadRemoteFile);
             } else if (message.state == 'request') {
               getPathContents(message.directory).then(contents => {
-                sendToPeers({type: 'share', state: 'start', directory: message.directory, contents: contents});
+                sendToPeers({type: 'share', state: 'start', directory: message.directory, contents: contents}, remoteUsername);
               });
             } else if (message.state == 'stop') {
               removeFileSharing(remoteUsername);
