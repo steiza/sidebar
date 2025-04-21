@@ -12,7 +12,11 @@ function generateRandomString(length) {
   return result;
 }
 
-const config = JSON.parse(fs.readFileSync('config.json', 'utf8'));
+var config = {'passwords': ['a']};
+
+if (process.env.SIDEBAR_PASSWORDS) {
+  config['passwords'] = process.env.SIDEBAR_PASSWORDS.split(',');
+}
 
 function compare(str1, str2) {
   if (str1.length != str2.length) {
@@ -30,9 +34,9 @@ function compare(str1, str2) {
 
 function getRoom(password) {
   var roomName = "";
-  config['rooms'].forEach(room => {
-    if (compare(password, room['password'])) {
-      roomName = room['name'];
+  config['passwords'].forEach(configPassword => {
+    if (compare(password, configPassword)) {
+      roomName = password;
     }
   });
   return roomName;

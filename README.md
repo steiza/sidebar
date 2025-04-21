@@ -12,17 +12,16 @@ To get the server up and running:
 
 ```shell
 $ npm install
-$ cp config.example.json config.json
 $ node server.js
 ```
 
-Then visit http://localhost:2025 in your browser. The username will be your display name and the password comes from your `config.json`.
+Then visit http://localhost:2025 in your browser. The username will be your display name and the password comes from the `SIDEBAR_PASSWORDS` environment variable (defaults to `a`).
 
 ### Server details
 
 Because the server doesn't handle much traffic, it can handle many password-protected rooms simultaneously, and can easily be self-hosted. Clients on separate NATs can connect to each other directly as long as the server is reachable by both clients. One option for making a self-hosted server publicly reachable with HTTPS is to use something like [Tailscale Funnel](https://tailscale.com/kb/1223/funnel).
 
-You configure the server with a `config.json` file; see `config.example.json` for details.
+Passwords are comma separated and loaded from the `SIDEBAR_PASSWORDS` environment variable.
 
 ### Client details
 

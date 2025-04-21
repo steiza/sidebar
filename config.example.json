@@ -1,6 +1,0 @@
-{
-    "rooms": [
-        {"name": "example", "password": "a"},
-        {"name": "another_example", "password": "b"}
-    ]
-}
