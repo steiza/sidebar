@@ -496,7 +496,11 @@
             peerConnection.createOffer()
               .then((offer) => peerConnection.setLocalDescription(offer))
               .then(() => {
+                console.log('sending local offer');
+                console.log(peerConnection.localDescription);
                 socket.emit('local offer', password, remoteUsername, peerConnection.localDescription);
+              }).catch((err) => {
+                console.log(err);
               });
           });
 
@@ -616,7 +620,12 @@
 
         function dataChannelOnMessage (event) {
           const message = JSON.parse(event.data);
-          if (message.type === 'mute') {
+          if (message.type == 'heartbeat') {
+            if (usernameToPeerConnections[remoteUsername].callback) {
+              clearTimeout(usernameToPeerConnections[remoteUsername].callback);
+              usernameToPeerConnections[remoteUsername].callback = null;
+            }
+          } else if (message.type === 'mute') {
             const container = document.querySelector('video#' + remoteUsername).parentElement;
             let overlayMuted = container.querySelector('div.overlayMuted');
 
@@ -640,6 +649,8 @@
         }
 
         function dataChannelOnOpen (event) {
+          sendToPeers({type: 'heartbeat'}, remoteUsername);
+
           // If we are muted, tell peer
           var audioAllOff = true;
           if (localStream) {
@@ -651,10 +662,11 @@
               }
             });
           }
-
           if (audioAllOff) {
             sendToPeers({type: 'mute', state: 'muted'}, remoteUsername);
           }
+
+          // If we are sharing a directory, tell peer
           if (dirHandle) {
             var contents = [];
             (async () => {
@@ -666,7 +678,7 @@
                 }
               }
             })().then( () => {
-              sendToPeers({type: 'share', state: 'start', directory: dirHandle.name + '/', contents: contents})
+              sendToPeers({type: 'share', state: 'start', directory: dirHandle.name + '/', contents: contents}, remoteUsername);
             });
           }
         }
@@ -690,8 +702,15 @@
 
         usernameToPeerConnections[remoteUsername].onicecandidate = event => {
           if (event.candidate) {
+            console.log('sending ice candidate');
+            console.log(event.candidate);
             socket.emit('send ice candidate', password, remoteUsername, event.candidate);
           }
+        }
+
+        usernameToPeerConnections[remoteUsername].onicecandidateerror  = event => {
+          console.log('ice candidate error');
+          console.log(event);
         }
 
         usernameToPeerConnections[remoteUsername].onnegotiationneeded = event => {
@@ -699,6 +718,8 @@
           usernameToPeerConnections[remoteUsername].createOffer()
             .then((offer) => usernameToPeerConnections[remoteUsername].setLocalDescription(offer))
             .then(() => {
+              console.log('sending local offer');
+              console.log(usernameToPeerConnections[remoteUsername].localDescription);
               socket.emit('local offer', password, remoteUsername, usernameToPeerConnections[remoteUsername].localDescription);
             })
             .catch((err) => {
@@ -748,8 +769,14 @@
 
       socket.on('offer response', (forUsername, remoteUsername, offer) => {
         if (forUsername == username) {
-          console.log('offer response ' + remoteUsername)
+          console.log('offer response ' + remoteUsername);
+          console.log(offer);
           usernameToPeerConnections[remoteUsername].setRemoteDescription(offer);
+
+          usernameToPeerConnections[remoteUsername].callback = setTimeout(() => {
+            console.log('restarting ICE negotiation');
+            usernameToPeerConnections[remoteUsername].restartIce();
+          }, 3000);
         }
       });
 
@@ -760,13 +787,21 @@
             createPeerConnection(remoteUsername, true);
           }
           if (usernameToPeerConnections[remoteUsername].makingOffer && !usernameToPeerConnections[remoteUsername].polite) {
+            console.log('ignoring offer')
             return;
           }
+          console.log(offer);
           usernameToPeerConnections[remoteUsername].setRemoteDescription(offer)
               .then(() => usernameToPeerConnections[remoteUsername].createAnswer())
-              .then((answer) => usernameToPeerConnections[remoteUsername].setLocalDescription(answer))
-              .then(() => {
+              .then((answer) => {
+                console.log(answer);
+                return usernameToPeerConnections[remoteUsername].setLocalDescription(answer);
+              }).then(() => {
+                console.log('sending remote offer');
+                console.log(usernameToPeerConnections[remoteUsername].localDescription);
                 socket.emit('remote offer', password, remoteUsername, usernameToPeerConnections[remoteUsername].localDescription);
+              }).catch((err) => {
+                console.log(err);
               });
         }
       });
@@ -774,6 +809,7 @@
       socket.on('recv ice candidate', (forUsername, remoteUsername, candidate) => {
         if (forUsername == username) {
           console.log('ice candidate from ' + remoteUsername);
+          console.log(candidate);
           usernameToPeerConnections[remoteUsername].addIceCandidate(candidate);
         }
       });
