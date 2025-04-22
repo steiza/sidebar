@@ -6,7 +6,7 @@ Sidebar lets you have video meetings and secure file sharing in your browser, di
 
 There is a server that sends and receives a small amount of traffic to help clients find each other, but all video, audio, and data content is sent directly from peer to peer and is end-to-end encrypted with [DTLS](https://en.wikipedia.org/wiki/Datagram_Transport_Layer_Security).
 
-### Quick start
+### Local development
 
 To get the server up and running:
 
@@ -19,9 +19,13 @@ Then visit http://localhost:2025 in your browser. The username will be your disp
 
 ### Server details
 
-Because the server doesn't handle much traffic, it can handle many password-protected rooms simultaneously, and can easily be self-hosted. Clients on separate NATs can connect to each other directly as long as the server is reachable by both clients. One option for making a self-hosted server publicly reachable with HTTPS is to use something like [Tailscale Funnel](https://tailscale.com/kb/1223/funnel).
+Because the server doesn't handle much traffic, it can handle many password-protected rooms simultaneously, and can easily be self-hosted. Clients on separate NATs can connect to each other directly as long as the server is reachable by both clients.
 
-Passwords are comma separated and loaded from the `SIDEBAR_PASSWORDS` environment variable.
+One option for making a self-hosted server publicly reachable with HTTPS is to use something like [Tailscale Funnel](https://tailscale.com/kb/1223/funnel).
+
+Another deployment option is to use [Azure Container Instances](https://learn.microsoft.com/en-us/azure/container-instances/container-instances-quickstart) along with a [sidecar for HTTPS](https://learn.microsoft.com/en-us/azure/container-instances/container-instances-container-group-automatic-ssl). This option costs about $2 / day. The images need to come from a container registry that does not rate-limit requests from Azure, like [GitHub Container Registry](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry). You can build these images yourself and host them on your GitHub account, or you can [find them on my GitHub account](https://github.com/steiza?tab=packages&visibility=public).
+
+Room passwords are comma separated and loaded from the `SIDEBAR_PASSWORDS` environment variable.
 
 ### Client details
 
