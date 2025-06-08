@@ -53,14 +53,26 @@ const app = http.createServer(function (req, res) {
         const html = ejs.render(template, {username: username, password: pw});
         res.writeHead(200, { 'Content-Type': 'text/html' });
         res.end(html);
-        return;
       }
+    } else {
+      // Access denied
+      res.writeHead(401, { 'WWW-Authenticate': 'Basic realm="401"' });
+      res.end('Authentication required.');
     }
+  } else if (req.url === "/styles.css") {
+    fs.readFile('styles.css', (err, data) => {
+      if (err) {
+        res.writeHead(404, { 'Content-Type': 'text/plain' });
+        res.end('Not found');
+      }
+      res.writeHead(200, { 'Content-Type': 'text/css' });
+      res.end(data);
+    });
+  } else {
+    // Default to 404
+    res.writeHead(404, { 'Content-Type': 'text/plain' });
+    res.end('Not found');
   }
-
-  // Access denied
-  res.writeHead(401, { 'WWW-Authenticate': 'Basic realm="401"' });
-  res.end('Authentication required.');
 }).listen(2025);
 
 const io = require('socket.io')(app);

@@ -1,0 +1,149 @@
+body {
+    background-color: bisque;
+    color: #2f2f2f;
+}
+
+div.flex {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+div.screenShareContainer {
+    position: relative;
+    width: calc(min(100vw, 133vh)*0.9);
+}
+
+div.videoContainer {
+    position: relative;
+    height: min(33vw, 33vh);
+    width: min(44vw, 44vh);
+    background-color: #4f4f4f;
+    margin: 10px;
+}
+
+div.videoContainer:only-child {
+    height: calc(min(75vw, 100vh)*0.9);
+    width: calc(min(100vw, 133vh)*0.9);
+}
+
+div.videoContainer:first-child:nth-last-child(2), div.videoContainer:first-child:nth-last-child(2) ~ div.videoContainer {
+    height: calc(max(min(38vw, 100vh), min(75vw, 50vh))*0.9);
+    width: calc(max(min(50vw, 133vh), min(100vw, 66vh))*0.9);
+}
+
+div.videoContainer:first-child:nth-last-child(3), div.videoContainer:first-child:nth-last-child(3) ~ div.videoContainer {
+    height: calc(max(min(25vw, 100vh), min(75vw, 33vh), min(38vw, 50vh))*0.9);
+    width: calc(max(min(33vw, 133vh), min(100vw, 44vh), min(50vw, 66vh))*0.9);
+}
+
+div.videoContainer:first-child:nth-last-child(4), div.videoContainer:first-child:nth-last-child(4) ~ div.videoContainer {
+    height: calc(max(min(19vw, 100vh), min(75vw, 25vh), min(38vw, 50vh))*0.9);
+    width: calc(max(min(25vw, 133vh), min(100vw, 33vh), min(50vw, 66vh))*0.9);
+}
+
+video {
+    height: 100%;
+    width: 100%;
+}
+
+div.overlay {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    background-color: #2f2f2f;
+    color: #f2f2f2;
+    padding: 2px 5px;
+    border-radius: 3px;
+}
+
+div.overlayMuted {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    background-color: #2f2f2f;
+    color: #f2f2f2;
+    padding: 2px 5px;
+    border-radius: 3px;
+    visibility: hidden;
+}
+
+div#controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+div.controlButton {
+    background-color: darkgreen;
+    color: bisque;
+    width: 100px;
+    height: 62px;
+    border-radius: 3px;
+    align-content: center;
+    font-size: 20px;
+    text-align: center;
+    cursor: pointer;
+}
+
+div.controlContainer {
+    position: relative;
+}
+
+div.controlSettings {
+    background-color: gray;
+    color: bisque;
+    width: 32px;
+    height: 62px;
+    border-radius: 3px;
+    align-content: center;
+    font-size: 20px;
+    text-align: center;
+    cursor: pointer;
+}
+
+div#videoSettingsOverlay {
+    position: absolute;
+    bottom: 62px;
+    left: 0px;
+    background-color: whitesmoke;
+    padding: 20px;
+    border: 2px solid #2f2f2f;
+    color: #2f2f2f;
+    white-space: nowrap;
+}
+
+div#audioSettingsOverlay {
+    position: absolute;
+    bottom: 62px;
+    left: 0px;
+    background-color: whitesmoke;
+    padding: 20px;
+    border: 2px solid #2f2f2f;
+    color: #2f2f2f;
+    white-space: nowrap;
+}
+
+div.fileSharingArea, div.downloadArea {
+    padding: 20px;
+}
+
+div.fileSharingContainer, div.downloadContainer {
+    background-color: whitesmoke;
+    padding: 20px;
+    margin: 20px;
+    border: 2px solid #2f2f2f;
+    color: #2f2f2f;
+    white-space: nowrap;
+}
+
+meter.download {
+    width: 100%;
+    height: 24px;
+}
+
+div.alert {
+    visibility: hidden;
+    background-color: darkred;
+    color: whitesmoke;
+}

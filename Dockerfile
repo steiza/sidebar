@@ -6,7 +6,7 @@ RUN mkdir -p /usr/src/app && chown -R node:node /usr/src/app
 WORKDIR /usr/src/app
 
 # Copy package.json and package-lock.json
-COPY --chown=node:node package*.json index.html server.js ./
+COPY --chown=node:node package*.json index.html server.js styles.css ./
 
 # Install dependencies
 RUN npm install
