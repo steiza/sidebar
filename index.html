@@ -621,10 +621,13 @@
         function dataChannelOnMessage (event) {
           const message = JSON.parse(event.data);
           if (message.type == 'heartbeat') {
-            if (usernameToPeerConnections[remoteUsername].callback) {
-              clearTimeout(usernameToPeerConnections[remoteUsername].callback);
-              usernameToPeerConnections[remoteUsername].callback = null;
+            if (usernameToPeerConnections[remoteUsername].checkHeartbeat) {
+              clearTimeout(usernameToPeerConnections[remoteUsername].checkHeartbeat);
             }
+            usernameToPeerConnections[remoteUsername].checkHeartbeat = setTimeout(() => {
+              console.log('restarting ICE negotiation');
+              usernameToPeerConnections[remoteUsername].restartIce();
+            }, 7000);
           } else if (message.type === 'mute') {
             const container = document.querySelector('video#' + remoteUsername).parentElement;
             let overlayMuted = container.querySelector('div.overlayMuted');
@@ -649,7 +652,9 @@
         }
 
         function dataChannelOnOpen (event) {
-          sendToPeers({type: 'heartbeat'}, remoteUsername);
+          usernameToPeerConnections[remoteUsername].sendHeartbeat = setInterval(() => {
+            sendToPeers({type: 'heartbeat'}, remoteUsername);
+          }, 1000);
 
           // If we are muted, tell peer
           var audioAllOff = true;
@@ -773,10 +778,10 @@
           console.log(offer);
           usernameToPeerConnections[remoteUsername].setRemoteDescription(offer);
 
-          usernameToPeerConnections[remoteUsername].callback = setTimeout(() => {
+          usernameToPeerConnections[remoteUsername].checkHeartbeat = setTimeout(() => {
             console.log('restarting ICE negotiation');
             usernameToPeerConnections[remoteUsername].restartIce();
-          }, 3000);
+          }, 4000);
         }
       });
 
@@ -822,6 +827,12 @@
           remoteVideo.remove();
         }
         if (usernameToPeerConnections[username]) {
+          if (usernameToPeerConnections[username].sendHeartbeat) {
+              clearTimeout(usernameToPeerConnections[username].sendHeartbeat);
+          }
+          if (usernameToPeerConnections[username].checkHeartbeat) {
+              clearTimeout(usernameToPeerConnections[username].checkHeartbeat);
+          }
           delete usernameToPeerConnections[username];
         }
       });
