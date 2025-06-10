@@ -640,7 +640,7 @@
             usernameToPeerConnections[remoteUsername].checkHeartbeat = setTimeout(() => {
               console.log('restarting ICE negotiation');
               usernameToPeerConnections[remoteUsername].restartIce();
-            }, 7000);
+            }, 4000);
           } else if (message.type === 'mute') {
             const container = document.querySelector('video#' + remoteUsername).parentElement;
             let overlayMuted = container.querySelector('div.overlayMuted');
