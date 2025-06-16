@@ -41,6 +41,13 @@
       </div>
       <div class="controlButton" id="fileButton" style="background-color: darkred; margin-left: 50px;">File</div>
     </div>
+    <div id="chatArea" style="margin: 20px 0;">
+      <form id="chatForm" style="display: flex; gap: 10px;">
+        <input type="text" id="chatInput" placeholder="Type a message..." style="flex: 1; padding: 8px;" autocomplete="off" />
+        <button type="submit" id="chatSubmit" style="padding: 8px 16px;">Send</button>
+      </form>
+      <textarea id="chatHistory" rows="10" style="width: 100%; margin-top: 10px;" readonly></textarea>
+    </div>
     <div id="downloadArea">
     </div>
     <div id="fileSharingArea">
@@ -487,6 +494,23 @@
         });
       }
 
+      function addToChat(from, message) {
+        const chatHistory = document.querySelector('#chatHistory');
+        chatHistory.value += `${from}: ${message}\n`;
+        chatHistory.scrollTop = chatHistory.scrollHeight;
+      }
+
+      document.querySelector('#chatForm').addEventListener('submit', function(event) {
+        event.preventDefault();
+        const chatInput = document.querySelector('#chatInput');
+        const message = chatInput.value.trim();
+        if (message.length > 0) {
+          addToChat(username, message);
+          chatInput.value = '';
+          sendToPeers({type: 'chat', message: message});
+        }
+      });
+
       function downloadRemoteFile(remoteUsername, path) {
         var parts = [];
         var receivedSize = 0;
@@ -618,6 +642,8 @@
             } else if (message.state === 'unmuted') {
               overlayMuted.style.visibility = "hidden";
             }
+          } else if (message.type == 'chat') {
+            addToChat(remoteUsername, message.message);
           } else if (message.type == 'share') {
             if (message.state == 'start') {
               removeFileSharing(remoteUsername);
