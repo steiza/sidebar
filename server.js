@@ -42,6 +42,10 @@ function getRoom(password) {
   return roomName;
 }
 
+function strEscape(str) {
+    return str.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/<\/script/g, '</" + "script');
+}
+
 const app = http.createServer(function (req, res) {
   if (req.url === '/') {
     if (req.headers.authorization) {
@@ -50,7 +54,7 @@ const app = http.createServer(function (req, res) {
       const [username, pw] = Buffer.from(b64auth, 'base64').toString().split(':');
       if (getRoom(pw)) {
         const template = fs.readFileSync('index.html', 'utf8');
-        const html = ejs.render(template, {username: username, password: pw});
+        const html = ejs.render(template, {username: strEscape(username), password: strEscape(pw)});
         res.writeHead(200, { 'Content-Type': 'text/html' });
         res.end(html);
       }
