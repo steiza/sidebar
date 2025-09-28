@@ -43,7 +43,7 @@ function getRoom(password) {
 }
 
 function strEscape(str) {
-    return str.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/<\/script/g, '</" + "script');
+    return str.replace(/\\/g, '\\\\').replace(/\ /g, '_').replace(/"/g, '\\"').replace(/<\/script/g, '</" + "script');
 }
 
 const app = http.createServer(function (req, res) {
