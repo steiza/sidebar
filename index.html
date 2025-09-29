@@ -612,10 +612,14 @@
               let offset = 0;
 
               while (offset < file.size) {
-                const chunk = file.slice(offset, offset + chunkSize);
-                const arrayBuffer = await chunk.arrayBuffer();
-                event.channel.send(arrayBuffer);
-                offset += chunkSize;
+                if (event.channel.bufferedAmount <= event.channel.bufferedAmountLowThreshold) {
+                  const chunk = file.slice(offset, offset + chunkSize);
+                  const arrayBuffer = await chunk.arrayBuffer();
+                  event.channel.send(arrayBuffer);
+                  offset += chunkSize;
+                } else {
+                  await new Promise(resolve => setTimeout(resolve, 1));
+                }
               }
 
               event.channel.close();
